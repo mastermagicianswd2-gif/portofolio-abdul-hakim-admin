@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Panel Admin | Portofolio</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" id="site-favicon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%23000000'%3EA%3C/text%3E%3C/svg%3E">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- PDF Engine untuk membuat thumbnail halaman 1 dari dokumen PDF secara instan -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- ============================================================
+       PENGHUBUNG KE GOOGLE APPS SCRIPT (satu-satunya tambahan)
+       Isi APPS_SCRIPT_URL dengan link Web App (berakhiran /exec)
+       ============================================================ -->
+  <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCbop5KqpUd3l6b4iXzOYqxO2IN-_dL-nFUffZQPcntpMkpcluGq2tnLqaoS6z0wxn/exec';
+    // Alamat portofolio publik, contoh: 'https://namaakun.github.io/portofolio/'
+    const PORTFOLIO_URL = 'GANTI_DENGAN_LINK_PORTOFOLIO_ANDA';
+
+    (function () {
+      // Jika link belum diisi, aplikasi tetap jalan dalam Mode Pratinjau seperti semula
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('/exec') === -1) return;
+
+      function callServer(fn, args) {
+        return fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ fn: fn, args: args }),
+          redirect: 'follow'
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.__error) throw new Error(data.__error);
+            return data ? data.result : null;
+          });
+      }
+
+      function makeRunner(onSuccess, onFailure) {
+        return new Proxy({}, {
+          get: function (_, prop) {
+            if (prop === 'withSuccessHandler') {
+              return function (cb) { return makeRunner(cb, onFailure); };
+            }
+            if (prop === 'withFailureHandler') {
+              return function (cb) { return makeRunner(onSuccess, cb); };
+            }
+            return function () {
+              var args = Array.prototype.slice.call(arguments);
+              callServer(prop, args)
+                .then(function (res) { if (onSuccess) onSuccess(res); })
+                .catch(function (err) {
+                  if (onFailure) onFailure(err);
+                  else console.error('Error Apps Script:', err);
+                });
+            };
+          }
+        });
+      }
+
+      window.google = { script: { run: makeRunner(null, null) } };
+    })();
+  </script>
+
+  <script>
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              black: '#070707',
+              surface: '#0f0f0f',
+              card: '#141414',
+              border: '#242424',
+              muted: '#737373',
+              light: '#f5f5f5'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #050505;
+      color: #f5f5f5;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    ::selection {
+      background: #ffffff;
+      color: #000000;
+    }
+    .noise-bg {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 0);
+      background-size: 26px 26px;
+    }
+    .glass-nav {
+      background: rgba(8, 8, 8, 0.85);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0d0d0d;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #444444;
+    }
+    
+    /* Efek transisi warna foto profil */
+    .profile-photo-img {
+      transition: filter 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .profile-photo-img.is-monochrome {
+      filter: grayscale(100%) contrast(115%);
+    }
+    .profile-photo-img.is-color {
+      filter: grayscale(0%) contrast(100%);
+    }
+    
+    @keyframes shimmer {
+      0% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+      100% { opacity: 0.3; }
+    }
+    .skeleton-loading {
+      animation: shimmer 1.6s infinite ease-in-out;
+      background: #18181b;
+    }
+    /* Baris konten yang bisa digeser ke samping */
+    .hscroll { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; -webkit-overflow-scrolling: touch; }
+    .hscroll::-webkit-scrollbar { height: 6px; }
+    .hscroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 9999px; }
+    .hscroll::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body class="noise-bg min-h-screen flex flex-col relative text-zinc-100 antialiased">
+
+  <!-- Floating Toast Notification System -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-160%] opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 px-5 py-3.5 rounded-xl border border-zinc-700 bg-zinc-900/95 text-sm font-medium shadow-2xl backdrop-blur-md max-w-sm">
+    <span id="toast-icon" class="text-base">✨</span>
+    <span id="toast-msg" class="leading-snug">Notifikasi</span>
+  </div>
+
+  <!-- MODAL: Secret Admin Login Dialog -->
+  <div id="admin-login-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4" onclick="if(event.target === this) leaveAdminLogin()">
+    <div class="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative text-left" onclick="event.stopPropagation()">
+      <button onclick="leaveAdminLogin()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+      <div class="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-1">Akses Panel Kelola</h3>
+      <p class="text-xs text-zinc-400 mb-5">Masukkan kata sandi admin untuk mengelola isi portofolio.</p>
+
+      <form id="admin-login-form" onsubmit="handleAdminLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 uppercase mb-1.5">Kata Sandi Admin</label>
+          <input type="password" id="admin-password-input" autocomplete="current-password" placeholder="Masukkan kata sandi..." required class="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-white transition-all">
+        </div>
+
+        <div id="login-error-msg" class="text-rose-400 text-xs hidden p-2.5 rounded-lg bg-rose-950/40 border border-rose-900/50"></div>
+
+        <button type="submit" id="btn-submit-login" class="w-full py-2.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-zinc-200 transition-all">
+          Masuk Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- MODAL: Full Secret Admin Dashboard Panel -->
+  <div id="admin-panel-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl hidden flex-col">
+    <!-- Top Bar -->
+    <div class="h-16 border-b border-zinc-800 bg-zinc-950 px-4 sm:px-6 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+        <span class="text-xs sm:text-sm font-bold tracking-wide text-white">PANEL KELOLA SAYA</span>
+        <span class="text-[10px] sm:text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 font-mono border border-zinc-800">Mode Admin</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="reloadAllData()" class="px-3 py-1.5 rounded-lg border border-zinc-800 text-xs text-zinc-300 hover:text-white hover:bg-zinc-900 transition-all">
+          Segarkan
+        </button>
+        <button onclick="logoutAdmin()" class="px-3 py-1.5 rounded-lg border border-rose-900/50 bg-rose-950/20 text-xs text-rose-400 hover:bg-rose-900/40 transition-all">
+          Keluar
+        </button>
+        <button onclick="closeAdminPanel()" class="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold transition-all">
+          Tutup
+        </button>
+      </div>
+    </div>
+
+    <!-- Admin Content Area -->
+    <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+      <!-- Sidebar Menu -->
+      <aside class="w-full md:w-60 border-b md:border-b-0 md:border-r border-zinc-800 bg-zinc-950/80 p-3 sm:p-4 flex md:flex-col gap-1.5 overflow-x-auto whitespace-nowrap flex-shrink-0 custom-scrollbar">
+        <button onclick="switchAdminTab('tab-profile')" id="btn-tab-profile" class="admin-tab-btn active-tab px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white bg-zinc-800/90 text-left transition-all">
+          Profil & Kontak
+        </button>
+        <button onclick="switchAdminTab('tab-education')" id="btn-tab-education" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Riwayat Pendidikan
+        </button>
+        <button onclick="switchAdminTab('tab-projects')" id="btn-tab-projects" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Kelola Proyek
+        </button>
+        <button onclick="switchAdminTab('tab-experiences')" id="btn-tab-experiences" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Pengalaman Kerja
+        </button>
+        <button onclick="switchAdminTab('tab-trainings')" id="btn-tab-trainings" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Kegiatan & Pelatihan
+        </button>
+        <button onclick="switchAdminTab('tab-skills')" id="btn-tab-skills" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Daftar Keahlian
+        </button>
+        <button onclick="switchAdminTab('tab-security')" id="btn-tab-security" class="admin-tab-btn px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white text-left transition-all">
+          Kata Sandi
+        </button>
+      </aside>
+
+      <!-- Panel Views -->
+      <div class="flex-grow overflow-y-auto custom-scrollbar p-5 sm:p-8 bg-zinc-950">
+        
+        <!-- TAB 1: Profil & 3 Kontak -->
+        <div id="tab-profile" class="admin-tab-content max-w-2xl space-y-6">
+          <div>
+            <h4 class="text-base sm:text-lg font-bold text-white">Profil Pribadi & Kontak Resmi</h4>
+            <p class="text-xs text-zinc-400">Informasi utama portofolio dan 3 saluran kontak resmi Anda.</p>
+          </div>
+
+          <form id="profile-form" onsubmit="saveProfileSettings(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1">Nama Lengkap</label>
+              <input type="text" id="edit-name" class="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:border-white focus:outline-none" placeholder="Nama Lengkap Anda">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1">Profesi / Title</label>
+              <input type="text" id="edit-title" class="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:border-white focus:outline-none" placeholder="Contoh: Software Engineer">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1">Tagline Singkat</label>
+              <input type="text" id="edit-tagline" class="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:border-white focus:outline-none" placeholder="Kalimat perkenalan singkat">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1">Biografi Lengkap (Tentang Saya)</label>
+              <textarea id="edit-bio" rows="4" class="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:border-white focus:outline-none" placeholder="Ceritakan latar belakang, fokus, dan dedikasi Anda..."></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-300 mb-1">Lokasi</label>
+              <input type="text" id="edit-location" class="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:border-white focus:outline-none" placeholder="Contoh: Indonesia">
+            </div>
+
+            <!-- Upload Foto Profil ke Google Drive -->
+            <div class="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+              <label class="block text-xs font-bold uppercase tracking-wider text-white">Foto Profil</label>
+              <div class="flex items-center gap-4">
+                <img id="edit-profile-preview" src="" class="w-16 h-16 rounded-xl object-cover bg-zinc-800 border border-zinc-700">
+                <div class="flex-grow space-y-2">
+                  <input type="file" id="edit-profile-file" accept="image/*" onchange="previewSelectedImage(this, 'edit-profile-preview')" class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-800 file:text-white">
+                  <input type="text" id="edit-profile-image-url" placeholder="Atau tempel URL gambar foto langsung" class="w-full px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs">
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload Foto Sampul (Cover Banner) -->
+            <div class="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-bold uppercase tracking-wider text-white">Foto Sampul (Cover Banner)</label>
+                <button type="button" onclick="removeCoverPhoto()" class="text-[11px] text-zinc-400 hover:text-rose-400 transition-colors font-medium">Kosongkan Sampul</button>
+              </div>
+              <p class="text-[11px] text-zinc-400 leading-snug">Foto memanjang di belakang foto profil dengan bayangan agak gelap. Kosongkan jika tidak ingin menampilkan sampul.</p>
+              
+              <div class="space-y-2.5">
+                <div class="w-full h-24 sm:h-28 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 relative flex items-center justify-center">
+                  <img id="edit-cover-preview" src="" class="w-full h-full object-cover hidden">
+                  <div id="edit-cover-placeholder" class="text-zinc-600 text-xs italic flex items-center gap-1.5">
+                    <span>Belum ada foto sampul dipilih</span>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <input type="file" id="edit-cover-file" accept="image/*" onchange="previewCoverImage(this)" class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-800 file:text-white cursor-pointer">
+                  <input type="text" id="edit-cover-image-url" oninput="previewCoverUrl(this.value)" placeholder="Atau tempel URL gambar foto sampul langsung" class="w-full px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs">
+                </div>
+              </div>
+            </div>
+
+            <!-- 3 Kontak: Email, Jobstreet, LinkedIn -->
+            <div class="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+              <h5 class="text-xs font-bold uppercase tracking-wider text-white">3 Saluran Kontak Utama</h5>
+              <div>
+                <label class="block text-xs text-zinc-400 mb-1">Alamat Email Resmi</label>
+                <input type="email" id="edit-email" placeholder="nama@email.com" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-xs">
+              </div>
+              <div>
+                <label class="block text-xs text-zinc-400 mb-1">Tautan Profil Jobstreet</label>
+                <input type="url" id="edit-jobstreet" placeholder="https://jobstreet.co.id/..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-xs">
+              </div>
+              <div>
+                <label class="block text-xs text-zinc-400 mb-1">Tautan Profil LinkedIn</label>
+                <input type="url" id="edit-linkedin" placeholder="https://linkedin.com/in/..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-xs">
+              </div>
+            </div>
+
+            <button type="submit" id="btn-save-profile" class="px-5 py-2.5 rounded-xl bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all">
+              Simpan Perubahan Profil & Kontak
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB 2: Riwayat Pendidikan -->
+        <div id="tab-education" class="admin-tab-content hidden max-w-2xl space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-base sm:text-lg font-bold text-white">Riwayat Pendidikan</h4>
+              <p class="text-xs text-zinc-400">Kelola riwayat studi, institusi, atau gelar akademik Anda.</p>
+            </div>
+            <button onclick="openAddEduModal()" class="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition-all">
+              + Tambah Pendidikan
+            </button>
+          </div>
+
+          <div id="admin-education-list" class="space-y-3">
+            <p class="text-zinc-500 text-xs italic">Belum ada riwayat pendidikan.</p>
+          </div>
+        </div>
+
+        <!-- TAB 3: Proyek -->
+        <div id="tab-projects" class="admin-tab-content hidden max-w-3xl space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-base sm:text-lg font-bold text-white">Daftar Proyek Saya</h4>
+              <p class="text-xs text-zinc-400">Tambah dan kelola karya portofolio Anda.</p>
+            </div>
+            <button onclick="openAddProjectModal()" class="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition-all">
+              + Tambah Proyek
+            </button>
+          </div>
+
+          <div id="admin-projects-list" class="space-y-3">
+            <p class="text-zinc-500 text-xs italic">Belum ada proyek.</p>
+          </div>
+        </div>
+
+        <!-- TAB 4: Pengalaman -->
+        <div id="tab-experiences" class="admin-tab-content hidden max-w-2xl space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-base sm:text-lg font-bold text-white">Riwayat Pengalaman Karier</h4>
+              <p class="text-xs text-zinc-400">Pengalaman kerja yang tersinkron langsung dengan Google Sheets.</p>
+            </div>
+            <button onclick="openAddExpModal()" class="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition-all">
+              + Tambah Pengalaman
+            </button>
+          </div>
+
+          <div id="admin-experiences-list" class="space-y-3">
+            <p class="text-zinc-500 text-xs italic">Belum ada riwayat pengalaman.</p>
+          </div>
+        </div>
+
+        <!-- TAB 5: Kegiatan & Pelatihan -->
+        <div id="tab-trainings" class="admin-tab-content hidden max-w-3xl space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-base sm:text-lg font-bold text-white">Kegiatan, Pelatihan & Sertifikasi</h4>
+              <p class="text-xs text-zinc-400">Kelola riwayat pelatihan dan unggah sertifikat ke Google Drive.</p>
+            </div>
+            <button onclick="openAddTrainingModal()" class="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition-all">
+              + Tambah Kegiatan/Pelatihan
+            </button>
+          </div>
+
+          <div id="admin-trainings-list" class="space-y-3">
+            <p class="text-zinc-500 text-xs italic">Belum ada riwayat kegiatan atau pelatihan.</p>
+          </div>
+        </div>
+
+        <!-- TAB 6: Keahlian -->
+        <div id="tab-skills" class="admin-tab-content hidden max-w-2xl space-y-6">
+          <div>
+            <h4 class="text-base sm:text-lg font-bold text-white">Keahlian & Tag</h4>
+            <p class="text-xs text-zinc-400">Daftar skill dan kompetensi yang Anda kuasai.</p>
+          </div>
+
+          <div id="admin-skills-wrapper" class="space-y-3">
+            <!-- Dynamic skill rows -->
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button type="button" onclick="addNewSkillInputRow()" class="px-4 py-2 rounded-xl border border-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold hover:bg-zinc-900 transition-all">
+              + Tambah Baris Skill
+            </button>
+            <button type="button" onclick="saveAllSkills()" class="px-5 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all">
+              Simpan Semua Keahlian
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 7: Kata Sandi -->
+        <div id="tab-security" class="admin-tab-content hidden max-w-md space-y-6">
+          <div>
+            <h4 class="text-base sm:text-lg font-bold text-white">Keamanan Akses</h4>
+            <p class="text-xs text-zinc-400">Ganti kata sandi rahasia untuk masuk ke panel ini.</p>
+          </div>
+
+          <form onsubmit="handlePasswordChange(event)" class="space-y-4 text-xs">
+            <div>
+              <label class="block font-medium text-zinc-400 mb-1">Kata Sandi Baru</label>
+              <input type="password" id="new-admin-pass" required minlength="5" placeholder="Minimal 5 karakter" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-medium text-zinc-400 mb-1">Ulangi Kata Sandi Baru</label>
+              <input type="password" id="confirm-admin-pass" required minlength="5" placeholder="Ulangi kata sandi baru" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none">
+            </div>
+            <button type="submit" class="px-5 py-2 rounded-lg bg-white text-black font-bold hover:bg-zinc-200 transition-all">
+              Ubah Kata Sandi
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah/Edit Pendidikan -->
+  <div id="edu-form-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative text-left">
+      <button onclick="closeEduModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+      <h3 id="edu-modal-title" class="text-sm sm:text-base font-bold text-white mb-4">Tambah Riwayat Pendidikan</h3>
+
+      <form onsubmit="submitEduForm(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="edu-form-id">
+        
+        <!-- Dropdown Pilih Jenjang Pendidikan -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Jenjang Pendidikan</label>
+            <select id="edu-form-level" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+              <option value="S1 (Sarjana)">S1 (Sarjana)</option>
+              <option value="S2 (Magister)">S2 (Magister)</option>
+              <option value="S3 (Doktor)">S3 (Doktor)</option>
+              <option value="Diploma (D3/D4)">Diploma (D3/D4)</option>
+              <option value="SMA / SMK / Sederajat">SMA / SMK / Sederajat</option>
+              <option value="SMP / MTs / Sederajat">SMP / MTs / Sederajat</option>
+              <option value="SD / MI / Sederajat">SD / MI / Sederajat</option>
+              <option value="Pendidikan Non-Formal">Pendidikan Non-Formal</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Gelar / Jurusan (Opsional)</label>
+            <input type="text" id="edu-form-degree" placeholder="Contoh: IPA / Sistem Informasi" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Institusi / Universitas / Sekolah</label>
+          <input type="text" id="edu-form-institution" required placeholder="Contoh: Universitas Indonesia / SDN 1" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Tahun / Periode</label>
+          <input type="text" id="edu-form-period" required placeholder="Contoh: 2019 - 2023" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Keterangan / IPK / Catatan Akademik</label>
+          <textarea id="edu-form-desc" rows="3" placeholder="Fokus konsentrasi, predikat kelulusan, atau catatan lainnya..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs"></textarea>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeEduModal()" class="px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 text-zinc-300">Batal</button>
+          <button type="submit" id="btn-save-edu-submit" class="px-5 py-2 rounded-lg bg-white text-black font-bold hover:bg-zinc-200">Simpan Pendidikan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah/Edit Proyek -->
+  <div id="project-form-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <button onclick="closeProjectModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+      <h3 id="project-modal-title" class="text-sm sm:text-base font-bold text-white mb-4">Tambah Proyek Baru</h3>
+
+      <form onsubmit="submitProjectForm(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="proj-form-id">
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Judul Proyek</label>
+          <input type="text" id="proj-form-title" required class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Kategori (Web, Mobile, dll)</label>
+            <input type="text" id="proj-form-category" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Tags (pisahkan koma)</label>
+            <input type="text" id="proj-form-tags" placeholder="React, Node.js" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Deskripsi Proyek</label>
+          <textarea id="proj-form-desc" rows="3" required class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs"></textarea>
+        </div>
+
+        <div class="p-3 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-2">
+          <label class="block font-bold text-white uppercase tracking-wider text-[11px]">Gambar Cover Proyek</label>
+          <input type="file" id="proj-form-file" accept="image/*" class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-800 file:text-white">
+          <input type="text" id="proj-form-image-url" placeholder="Atau tempel URL gambar langsung" class="w-full px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">URL Demo / Live Web</label>
+            <input type="text" id="proj-form-live" placeholder="https://..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">URL Repository (GitHub)</label>
+            <input type="text" id="proj-form-github" placeholder="https://github.com/..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeProjectModal()" class="px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 text-zinc-300">Batal</button>
+          <button type="submit" id="btn-save-project-submit" class="px-5 py-2 rounded-lg bg-white text-black font-bold hover:bg-zinc-200">Simpan Proyek</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah/Edit Pengalaman -->
+  <div id="exp-form-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative text-left">
+      <button onclick="closeExpModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+      <h3 id="exp-modal-title" class="text-sm sm:text-base font-bold text-white mb-4">Tambah Pengalaman</h3>
+
+      <form onsubmit="submitExpForm(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="exp-form-id">
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Peran / Jabatan (Role)</label>
+          <input type="text" id="exp-form-role" required placeholder="Contoh: Software Engineer" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Perusahaan / Organisasi</label>
+            <input type="text" id="exp-form-company" required placeholder="Nama Perusahaan" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Periode Kerja</label>
+            <input type="text" id="exp-form-period" required placeholder="2022 - Sekarang" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Deskripsi Tanggung Jawab & Dampak</label>
+          <textarea id="exp-form-desc" rows="3" required class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs"></textarea>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeExpModal()" class="px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 text-zinc-300">Batal</button>
+          <button type="submit" id="btn-save-exp-submit" class="px-5 py-2 rounded-lg bg-white text-black font-bold hover:bg-zinc-200">Simpan Pengalaman</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah/Edit Kegiatan & Pelatihan -->
+  <div id="training-form-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <button onclick="closeTrainingModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+      <h3 id="training-modal-title" class="text-sm sm:text-base font-bold text-white mb-4">Tambah Kegiatan / Pelatihan</h3>
+
+      <form onsubmit="submitTrainingForm(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="training-form-id">
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Nama Kegiatan / Pelatihan</label>
+          <input type="text" id="training-form-title" required placeholder="Contoh: Bootcamp Cloud Computing" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Penyelenggara / Institusi</label>
+            <input type="text" id="training-form-organizer" required placeholder="Contoh: Google Cloud / Asosiasi" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+          <div>
+            <label class="block font-medium text-zinc-400 mb-1">Waktu / Periode</label>
+            <input type="text" id="training-form-period" required placeholder="Contoh: 2024" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Kategori / Tipe</label>
+          <select id="training-form-type" class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs">
+            <option value="Pelatihan">Pelatihan</option>
+            <option value="Sertifikasi">Sertifikasi</option>
+            <option value="Kegiatan / Organisasi">Kegiatan / Organisasi</option>
+            <option value="Workshop">Workshop</option>
+            <option value="Seminar">Seminar</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-medium text-zinc-400 mb-1">Deskripsi Kegiatan / Materi</label>
+          <textarea id="training-form-desc" rows="3" required placeholder="Ringkasan materi, peran, atau pencapaian..." class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white focus:border-white focus:outline-none text-xs"></textarea>
+        </div>
+
+        <div class="p-3 rounded-xl border border-zinc-800 bg-zinc-900/60 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="block font-bold text-white uppercase tracking-wider text-[11px]">Unggah Sertifikat / Dokumen</label>
+            <span class="text-[10px] text-zinc-400">Format: JPG, PNG, PDF</span>
+          </div>
+
+          <input type="file" id="training-form-file" accept="image/*,application/pdf" onchange="handleTrainingFileSelected(this)" class="text-xs text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-zinc-800 file:text-white cursor-pointer">
+          <input type="text" id="training-form-doc-url" placeholder="Atau tempel URL dokumen/gambar sertifikat langsung" class="w-full px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs">
+          
+          <!-- Kotak Pratinjau Thumbnail Otomatis (Gambar atau Halaman 1 PDF) -->
+          <div id="training-file-preview-box" class="hidden p-2.5 rounded-lg border border-zinc-800 bg-zinc-950 flex items-center gap-3">
+            <img id="training-form-preview-img" src="" class="w-14 h-14 rounded object-cover bg-zinc-900 border border-zinc-700 flex-shrink-0">
+            <div class="min-w-0 flex-grow text-xs">
+              <p id="training-form-file-name" class="font-bold text-white truncate"></p>
+              <span id="training-form-file-badge" class="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono mt-1 bg-zinc-800 text-zinc-300"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeTrainingModal()" class="px-4 py-2 rounded-lg border border-zinc-800 hover:bg-zinc-900 text-zinc-300">Batal</button>
+          <button type="submit" id="btn-save-training-submit" class="px-5 py-2 rounded-lg bg-white text-black font-bold hover:bg-zinc-200">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let portfolioData = {
+      settings: {},
+      projects: [],
+      experiences: [],
+      skills: [],
+      trainings: [],
+      education: []
+    };
+    let adminToken = "";
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Toast notification function
+    function showToast(message, isSuccess = true) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toast-msg');
+      const icon = document.getElementById('toast-icon');
+      if (!toast || !msg || !icon) return;
+      
+      msg.textContent = message;
+      icon.textContent = isSuccess ? '✓' : '⚠️';
+      
+      toast.classList.remove('translate-y-[-160%]', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-[-160%]', 'opacity-0');
+      }, 3500);
+    }
+
+    function previewCoverImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          updateAdminCoverPreview(e.target.result);
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function previewCoverUrl(val) {
+      updateAdminCoverPreview(val ? String(val).trim() : '');
+    }
+
+    function updateAdminCoverPreview(url) {
+      const prevImg = document.getElementById('edit-cover-preview');
+      const placeholder = document.getElementById('edit-cover-placeholder');
+      if (url && String(url).trim()) {
+        if (prevImg) {
+          prevImg.src = String(url).trim();
+          prevImg.classList.remove('hidden');
+        }
+        if (placeholder) placeholder.classList.add('hidden');
+      } else {
+        if (prevImg) {
+          prevImg.src = '';
+          prevImg.classList.add('hidden');
+        }
+        if (placeholder) placeholder.classList.remove('hidden');
+      }
+    }
+
+    function removeCoverPhoto() {
+      const urlInput = document.getElementById('edit-cover-image-url');
+      const fileInput = document.getElementById('edit-cover-file');
+      if (urlInput) urlInput.value = '';
+      if (fileInput) fileInput.value = '';
+      updateAdminCoverPreview('');
+      showToast('Foto sampul telah dikosongkan. Klik simpan untuk menerapkan.');
+    }
+
+    // Helper untuk mengecek apakah berkas berupa PDF
+    // Panel admin tidak menampilkan halaman publik, jadi fungsi ini dikosongkan
+    // (alur simpan data tetap sama seperti sebelumnya)
+    function renderPublicView() {}
+
+    function isDocumentPdf(item) {
+      if (!item) return false;
+      if (item.fileType === 'pdf') return true;
+      const url = (item.docUrl || '').toLowerCase();
+      if (url.endsWith('.pdf') || url.includes('.pdf?') || url.includes('/preview')) return true;
+      return false;
+    }
+
+    // Resolusi thumbnail cerdas dari file upload (PDF atau foto)
+    function resolveTrainingThumbnail(item) {
+      if (!item) return '';
+      if (item.thumbnailUrl && item.thumbnailUrl.trim()) {
+        return item.thumbnailUrl.trim();
+      }
+      const url = item.docUrl || '';
+      if (!url) return '';
+
+      // Jika berkas berasal dari Google Drive, gunakan endpoint thumbnail resmi Drive
+      const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (driveMatch && driveMatch[1]) {
+        return 'https://drive.google.com/thumbnail?id=' + driveMatch[1] + '&sz=w800';
+      }
+
+      return url;
+    }
+
+    // Alamat portofolio publik (untuk tombol Tutup / batal login)
+    function hasPortfolioUrl() {
+      return typeof PORTFOLIO_URL === 'string' && PORTFOLIO_URL.indexOf('http') === 0;
+    }
+
+    // Batal login: kembali ke portofolio publik
+    function leaveAdminLogin() {
+      if (hasPortfolioUrl()) window.location.href = PORTFOLIO_URL;
+    }
+
+    window.addEventListener('load', () => {
+      loadInitialData();
+      openAdminLoginModal();
+    });
+
+    function openAdminLoginModal() {
+      if (adminToken) {
+        openAdminPanel();
+        return;
+      }
+      const modal = document.getElementById('admin-login-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const passInput = document.getElementById('admin-password-input');
+        if (passInput) {
+          passInput.value = '';
+          passInput.focus();
+        }
+      }
+    }
+
+    function closeAdminLoginModal() {
+      const modal = document.getElementById('admin-login-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      const err = document.getElementById('login-error-msg');
+      if (err) err.classList.add('hidden');
+      const input = document.getElementById('admin-password-input');
+      if (input) input.value = '';
+    }
+
+    function handleAdminLogin(e) {
+      if (e) e.preventDefault();
+      const passInput = document.getElementById('admin-password-input');
+      const btn = document.getElementById('btn-submit-login');
+      const err = document.getElementById('login-error-msg');
+      if (!passInput || !btn || !err) return;
+
+      const pass = passInput.value.trim();
+      if (!pass) {
+        err.textContent = 'Silakan masukkan kata sandi.';
+        err.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Memverifikasi...';
+      err.classList.add('hidden');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.textContent = 'Masuk Dashboard';
+            if (res && res.success) {
+              adminToken = pass;
+              closeAdminLoginModal();
+              openAdminPanel();
+              showToast('Berhasil membuka panel kelola');
+            } else {
+              err.textContent = (res && res.message) ? res.message : 'Kata sandi salah. Silakan coba lagi.';
+              err.classList.remove('hidden');
+            }
+          })
+          .withFailureHandler((netErr) => {
+            btn.disabled = false;
+            btn.textContent = 'Masuk Dashboard';
+            err.textContent = 'Gagal menghubungi server: ' + (netErr.message || netErr.toString());
+            err.classList.remove('hidden');
+          })
+          .verifyAdminPassword(pass);
+      } else {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = 'Masuk Dashboard';
+          if (pass === 'admin123') {
+            adminToken = pass;
+            closeAdminLoginModal();
+            openAdminPanel();
+            showToast('Berhasil masuk (Mode Pratinjau)');
+          } else {
+            err.textContent = 'Kata sandi tidak sesuai.';
+            err.classList.remove('hidden');
+          }
+        }, 350);
+      }
+    }
+
+    function logoutAdmin() {
+      adminToken = "";
+      const panel = document.getElementById('admin-panel-modal');
+      if (panel) {
+        panel.classList.add('hidden');
+        panel.classList.remove('flex');
+      }
+      showToast('Anda telah keluar dari mode admin.');
+      openAdminLoginModal();
+    }
+
+    function openAdminPanel() {
+      const panel = document.getElementById('admin-panel-modal');
+      if (panel) {
+        panel.classList.remove('hidden');
+        panel.classList.add('flex');
+        populateAdminFields();
+        switchAdminTab('tab-profile');
+      }
+    }
+
+    function closeAdminPanel() {
+      const panel = document.getElementById('admin-panel-modal');
+      if (panel) {
+        panel.classList.add('hidden');
+        panel.classList.remove('flex');
+      }
+      if (hasPortfolioUrl()) {
+        window.location.href = PORTFOLIO_URL;
+      } else {
+        adminToken = "";
+        openAdminLoginModal();
+      }
+    }
+
+    function switchAdminTab(tabId) {
+      document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(el => {
+        el.classList.remove('bg-zinc-800/90', 'text-white');
+        el.classList.add('text-zinc-400');
+      });
+
+      const activeContent = document.getElementById(tabId);
+      if (activeContent) activeContent.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-zinc-400');
+        activeBtn.classList.add('bg-zinc-800/90', 'text-white');
+      }
+    }
+
+    function populateAdminFields() {
+      const s = portfolioData.settings || {};
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+      };
+
+      setVal('edit-name', s.name || s.Name);
+      setVal('edit-title', s.title || s.Title);
+      setVal('edit-tagline', s.tagline || s.Tagline);
+      setVal('edit-bio', s.bio || s.Bio);
+      setVal('edit-email', s.email || s.Email);
+      setVal('edit-jobstreet', s.jobstreet || s.Jobstreet);
+      setVal('edit-linkedin', s.linkedin || s.Linkedin);
+      setVal('edit-location', s.location || s.Location);
+      const pImg = s.profile_image || s.Profile_Image || s.profileimage || '';
+      setVal('edit-profile-image-url', pImg);
+
+      const preview = document.getElementById('edit-profile-preview');
+      if (preview) {
+        preview.src = pImg || 'https://placehold.co/200x200/121212/fafafa?text=Foto';
+      }
+
+      // Isi field cover image di panel admin
+      const cImg = s.cover_image || s.Cover_Image || s.coverimage || '';
+      setVal('edit-cover-image-url', cImg);
+      updateAdminCoverPreview(cImg);
+      const coverFileInput = document.getElementById('edit-cover-file');
+      if (coverFileInput) coverFileInput.value = '';
+
+      renderAdminEducationTable();
+      renderAdminProjectsTable();
+      renderAdminExperiencesTable();
+      renderAdminTrainingsTable();
+      renderAdminSkillsTable();
+    }
+
+    function previewSelectedImage(input, previewId) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const prev = document.getElementById(previewId);
+          if (prev) prev.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function uploadFileAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function() {
+          const base64 = reader.result;
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(res => resolve(res))
+              .withFailureHandler(err => reject(err))
+              .uploadImageToDrive(adminToken, base64, file.name, file.type);
+          } else {
+            resolve({ success: true, url: base64 });
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function saveProfileSettings(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-profile');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+      }
+
+      let imageUrl = document.getElementById('edit-profile-image-url') ? document.getElementById('edit-profile-image-url').value : '';
+      const fileInput = document.getElementById('edit-profile-file');
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        if (btn) btn.textContent = 'Mengunggah ke Drive...';
+        try {
+          const uploadRes = await uploadFileAsync(fileInput.files[0]);
+          if (uploadRes.success) {
+            imageUrl = uploadRes.url;
+            const urlInput = document.getElementById('edit-profile-image-url');
+            if (urlInput) urlInput.value = imageUrl;
+          } else {
+            showToast(uploadRes.message || 'Gagal upload foto', false);
+          }
+        } catch (err) {
+          showToast('Error upload: ' + err.toString(), false);
+        }
+      }
+
+      // Handle upload foto sampul jika ada berkas baru
+      let coverUrl = document.getElementById('edit-cover-image-url') ? document.getElementById('edit-cover-image-url').value.trim() : '';
+      const coverFileInput = document.getElementById('edit-cover-file');
+
+      if (coverFileInput && coverFileInput.files && coverFileInput.files[0]) {
+        if (btn) btn.textContent = 'Mengunggah sampul ke Drive...';
+        try {
+          const upCoverRes = await uploadFileAsync(coverFileInput.files[0]);
+          if (upCoverRes && upCoverRes.success) {
+            coverUrl = upCoverRes.url;
+            const coverUrlInput = document.getElementById('edit-cover-image-url');
+            if (coverUrlInput) coverUrlInput.value = coverUrl;
+          }
+        } catch (cErr) {
+          console.warn('Gagal upload sampul:', cErr);
+        }
+      }
+
+      const getVal = id => document.getElementById(id) ? document.getElementById(id).value : '';
+      const updatedSettings = {
+        name: getVal('edit-name'),
+        title: getVal('edit-title'),
+        tagline: getVal('edit-tagline'),
+        bio: getVal('edit-bio'),
+        profile_image: imageUrl,
+        cover_image: coverUrl,
+        email: getVal('edit-email'),
+        jobstreet: getVal('edit-jobstreet'),
+        linkedin: getVal('edit-linkedin'),
+        location: getVal('edit-location')
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Perubahan Profil & Kontak';
+            }
+            if (res.success) {
+              portfolioData.settings = updatedSettings;
+              renderPublicView();
+              showToast('Profil & kontak berhasil disimpan!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Perubahan Profil & Kontak';
+            }
+            showToast('Gagal menyimpan: ' + err.toString(), false);
+          })
+          .updateSettings(adminToken, updatedSettings);
+      } else {
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan Profil & Kontak';
+          }
+          portfolioData.settings = updatedSettings;
+          renderPublicView();
+          showToast('Profil tersimpan (Mode Lokal)');
+        }, 400);
+      }
+    }
+
+    function renderAdminEducationTable() {
+      const container = document.getElementById('admin-education-list');
+      if (!container) return;
+      const education = portfolioData.education || [];
+      if (education.length === 0) {
+        container.innerHTML = '<p class="text-zinc-500 text-xs italic">Belum ada riwayat pendidikan.</p>';
+        return;
+      }
+
+      container.innerHTML = education.map(edu => {
+        const hasDegree = Boolean(edu.degree && edu.degree.trim());
+        const displayTitle = hasDegree ? edu.degree : (edu.institution || 'Pendidikan');
+        return `
+        <div class="flex items-center justify-between p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 text-xs">
+          <div>
+            <p class="font-bold text-white text-sm">
+              ${escapeHtml(displayTitle)} 
+              ${edu.level ? `<span class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono ml-1">${escapeHtml(edu.level)}</span>` : ''}
+              ${hasDegree && edu.institution ? `<span class="font-normal text-zinc-400">di ${escapeHtml(edu.institution)}</span>` : ''}
+            </p>
+            <p class="text-zinc-500 font-mono text-[11px]">${escapeHtml(edu.period)}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editEducation('${edu.id}')" class="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all">
+              Edit
+            </button>
+            <button onclick="deleteEdu('${edu.id}')" class="px-3 py-1.5 rounded-lg border border-rose-900/50 bg-rose-950/30 text-rose-400 hover:bg-rose-900/50 transition-all">
+              Hapus
+            </button>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function openAddEduModal() {
+      const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      setV('edu-form-id', '');
+      setV('edu-form-level', 'S1 (Sarjana)');
+      setV('edu-form-institution', '');
+      setV('edu-form-degree', '');
+      setV('edu-form-period', '');
+      setV('edu-form-desc', '');
+
+      const title = document.getElementById('edu-modal-title');
+      if (title) title.textContent = 'Tambah Riwayat Pendidikan';
+
+      const modal = document.getElementById('edu-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function editEducation(id) {
+      const edu = (portfolioData.education || []).find(e => e.id === id);
+      if (!edu) return;
+
+      const setV = (elemId, v) => { const el = document.getElementById(elemId); if (el) el.value = v; };
+      setV('edu-form-id', edu.id);
+      setV('edu-form-level', edu.level || 'S1 (Sarjana)');
+      setV('edu-form-institution', edu.institution);
+      setV('edu-form-degree', edu.degree);
+      setV('edu-form-period', edu.period);
+      setV('edu-form-desc', edu.description || '');
+
+      const title = document.getElementById('edu-modal-title');
+      if (title) title.textContent = 'Edit Riwayat Pendidikan';
+
+      const modal = document.getElementById('edu-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeEduModal() {
+      const modal = document.getElementById('edu-form-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function submitEduForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-edu-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+      }
+
+      const getV = id => document.getElementById(id) ? document.getElementById(id).value : '';
+      const eduPayload = {
+        id: getV('edu-form-id'),
+        level: getV('edu-form-level'),
+        institution: getV('edu-form-institution'),
+        degree: getV('edu-form-degree'),
+        period: getV('edu-form-period'),
+        description: getV('edu-form-desc')
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Pendidikan';
+            }
+            if (res.success) {
+              closeEduModal();
+              reloadAllData();
+              showToast('Riwayat pendidikan berhasil disimpan!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Pendidikan';
+            }
+            showToast('Gagal: ' + err.toString(), false);
+          })
+          .saveEducation(adminToken, eduPayload);
+      } else {
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Pendidikan';
+          }
+          if (!portfolioData.education) portfolioData.education = [];
+          if (eduPayload.id) {
+            const idx = portfolioData.education.findIndex(e => e.id === eduPayload.id);
+            if (idx > -1) portfolioData.education[idx] = eduPayload;
+          } else {
+            eduPayload.id = 'edu-' + new Date().getTime();
+            portfolioData.education.push(eduPayload);
+          }
+          closeEduModal();
+          renderPublicView();
+          renderAdminEducationTable();
+          showToast('Riwayat pendidikan disimpan (Lokal)');
+        }, 350);
+      }
+    }
+
+    function deleteEdu(id) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              reloadAllData();
+              showToast('Riwayat pendidikan dihapus.');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .deleteEducation(adminToken, id);
+      } else {
+        portfolioData.education = (portfolioData.education || []).filter(e => e.id !== id);
+        renderPublicView();
+        renderAdminEducationTable();
+        showToast('Riwayat pendidikan dihapus (Lokal)');
+      }
+    }
+
+    function renderAdminProjectsTable() {
+      const container = document.getElementById('admin-projects-list');
+      if (!container) return;
+      const projects = portfolioData.projects || [];
+      if (projects.length === 0) {
+        container.innerHTML = '<p class="text-zinc-500 text-xs italic">Belum ada proyek.</p>';
+        return;
+      }
+
+      container.innerHTML = projects.map(proj => `
+        <div class="flex items-center justify-between p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 text-xs">
+          <div class="flex items-center gap-3">
+            <img src="${proj.imageUrl || 'https://placehold.co/100x100/222/fff?text=No+Img'}" class="w-12 h-12 rounded-lg object-cover bg-zinc-800 border border-zinc-700">
+            <div>
+              <p class="font-bold text-white text-sm">${proj.title}</p>
+              <p class="text-zinc-400 text-xs">${proj.category || 'Umum'} • ${(proj.tags || []).join(', ')}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editProject('${proj.id}')" class="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all">
+              Edit
+            </button>
+            <button onclick="deleteProject('${proj.id}')" class="px-3 py-1.5 rounded-lg border border-rose-900/50 bg-rose-950/30 text-rose-400 hover:bg-rose-900/50 transition-all">
+              Hapus
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openAddProjectModal() {
+      const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      setV('proj-form-id', '');
+      setV('proj-form-title', '');
+      setV('proj-form-category', '');
+      setV('proj-form-tags', '');
+      setV('proj-form-desc', '');
+      setV('proj-form-file', '');
+      setV('proj-form-image-url', '');
+      setV('proj-form-live', '');
+      setV('proj-form-github', '');
+
+      const title = document.getElementById('project-modal-title');
+      if (title) title.textContent = 'Tambah Proyek Baru';
+
+      const modal = document.getElementById('project-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function editProject(id) {
+      const proj = (portfolioData.projects || []).find(p => p.id === id);
+      if (!proj) return;
+
+      const setV = (elemId, v) => { const el = document.getElementById(elemId); if (el) el.value = v; };
+      setV('proj-form-id', proj.id);
+      setV('proj-form-title', proj.title);
+      setV('proj-form-category', proj.category || '');
+      setV('proj-form-tags', Array.isArray(proj.tags) ? proj.tags.join(', ') : (proj.tags || ''));
+      setV('proj-form-desc', proj.description);
+      setV('proj-form-file', '');
+      setV('proj-form-image-url', proj.imageUrl || '');
+      setV('proj-form-live', proj.liveUrl || '');
+      setV('proj-form-github', proj.githubUrl || '');
+
+      const title = document.getElementById('project-modal-title');
+      if (title) title.textContent = 'Edit Proyek';
+
+      const modal = document.getElementById('project-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeProjectModal() {
+      const modal = document.getElementById('project-form-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function submitProjectForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-project-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+      }
+
+      let imageUrl = document.getElementById('proj-form-image-url') ? document.getElementById('proj-form-image-url').value : '';
+      const fileInput = document.getElementById('proj-form-file');
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        if (btn) btn.textContent = 'Mengunggah cover ke Drive...';
+        try {
+          const upRes = await uploadFileAsync(fileInput.files[0]);
+          if (upRes.success) {
+            imageUrl = upRes.url;
+          }
+        } catch (err) {
+          showToast('Gagal upload cover: ' + err.toString(), false);
+        }
+      }
+
+      const getV = id => document.getElementById(id) ? document.getElementById(id).value : '';
+      const tagsString = getV('proj-form-tags');
+      const projectPayload = {
+        id: getV('proj-form-id'),
+        title: getV('proj-form-title'),
+        category: getV('proj-form-category') || 'Umum',
+        tags: tagsString ? tagsString.split(',').map(s => s.trim()).filter(Boolean) : [],
+        description: getV('proj-form-desc'),
+        imageUrl: imageUrl,
+        liveUrl: getV('proj-form-live'),
+        githubUrl: getV('proj-form-github')
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Proyek';
+            }
+            if (res.success) {
+              closeProjectModal();
+              reloadAllData();
+              showToast('Proyek berhasil disimpan!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Proyek';
+            }
+            showToast('Gagal: ' + err.toString(), false);
+          })
+          .saveProject(adminToken, projectPayload);
+      } else {
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Proyek';
+          }
+          if (!portfolioData.projects) portfolioData.projects = [];
+          if (projectPayload.id) {
+            const idx = portfolioData.projects.findIndex(p => p.id === projectPayload.id);
+            if (idx > -1) portfolioData.projects[idx] = projectPayload;
+          } else {
+            projectPayload.id = 'proj-' + new Date().getTime();
+            portfolioData.projects.push(projectPayload);
+          }
+          closeProjectModal();
+          renderPublicView();
+          renderAdminProjectsTable();
+          showToast('Proyek disimpan (Lokal)');
+        }, 350);
+      }
+    }
+
+    function deleteProject(id) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              reloadAllData();
+              showToast('Proyek berhasil dihapus.');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .deleteProject(adminToken, id);
+      } else {
+        portfolioData.projects = (portfolioData.projects || []).filter(p => p.id !== id);
+        renderPublicView();
+        renderAdminProjectsTable();
+        showToast('Proyek dihapus (Lokal)');
+      }
+    }
+
+    function renderAdminExperiencesTable() {
+      const container = document.getElementById('admin-experiences-list');
+      if (!container) return;
+      const experiences = portfolioData.experiences || [];
+      if (experiences.length === 0) {
+        container.innerHTML = '<p class="text-zinc-500 text-xs italic">Belum ada pengalaman.</p>';
+        return;
+      }
+
+      container.innerHTML = experiences.map(exp => `
+        <div class="flex items-center justify-between p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 text-xs">
+          <div>
+            <p class="font-bold text-white text-sm">${exp.role} <span class="font-normal text-zinc-400">di ${exp.company}</span></p>
+            <p class="text-zinc-500 font-mono text-[11px]">${exp.period}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editExperience('${exp.id}')" class="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all">
+              Edit
+            </button>
+            <button onclick="deleteExp('${exp.id}')" class="px-3 py-1.5 rounded-lg border border-rose-900/50 bg-rose-950/30 text-rose-400 hover:bg-rose-900/50 transition-all">
+              Hapus
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openAddExpModal() {
+      const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      setV('exp-form-id', '');
+      setV('exp-form-role', '');
+      setV('exp-form-company', '');
+      setV('exp-form-period', '');
+      setV('exp-form-desc', '');
+
+      const title = document.getElementById('exp-modal-title');
+      if (title) title.textContent = 'Tambah Pengalaman Baru';
+
+      const modal = document.getElementById('exp-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function editExperience(id) {
+      const exp = (portfolioData.experiences || []).find(e => e.id === id);
+      if (!exp) return;
+
+      const setV = (elemId, v) => { const el = document.getElementById(elemId); if (el) el.value = v; };
+      setV('exp-form-id', exp.id);
+      setV('exp-form-role', exp.role);
+      setV('exp-form-company', exp.company);
+      setV('exp-form-period', exp.period);
+      setV('exp-form-desc', exp.description);
+
+      const title = document.getElementById('exp-modal-title');
+      if (title) title.textContent = 'Edit Pengalaman';
+
+      const modal = document.getElementById('exp-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeExpModal() {
+      const modal = document.getElementById('exp-form-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function submitExpForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-exp-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+      }
+
+      const getV = id => document.getElementById(id) ? document.getElementById(id).value : '';
+      const expPayload = {
+        id: getV('exp-form-id'),
+        role: getV('exp-form-role'),
+        company: getV('exp-form-company'),
+        period: getV('exp-form-period'),
+        description: getV('exp-form-desc')
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Pengalaman';
+            }
+            if (res.success) {
+              closeExpModal();
+              reloadAllData();
+              showToast('Pengalaman berhasil diperbarui');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Pengalaman';
+            }
+            showToast('Gagal: ' + err.toString(), false);
+          })
+          .saveExperience(adminToken, expPayload);
+      } else {
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Pengalaman';
+          }
+          if (!portfolioData.experiences) portfolioData.experiences = [];
+          if (expPayload.id) {
+            const idx = portfolioData.experiences.findIndex(e => e.id === expPayload.id);
+            if (idx > -1) portfolioData.experiences[idx] = expPayload;
+          } else {
+            expPayload.id = 'exp-' + new Date().getTime();
+            portfolioData.experiences.push(expPayload);
+          }
+          closeExpModal();
+          renderPublicView();
+          renderAdminExperiencesTable();
+          showToast('Pengalaman disimpan (Lokal)');
+        }, 350);
+      }
+    }
+
+    function deleteExp(id) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              reloadAllData();
+              showToast('Pengalaman dihapus');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .deleteExperience(adminToken, id);
+      } else {
+        portfolioData.experiences = (portfolioData.experiences || []).filter(e => e.id !== id);
+        renderPublicView();
+        renderAdminExperiencesTable();
+        showToast('Pengalaman dihapus (Lokal)');
+      }
+    }
+
+    function renderAdminTrainingsTable() {
+      const container = document.getElementById('admin-trainings-list');
+      if (!container) return;
+      const trainings = portfolioData.trainings || [];
+      if (trainings.length === 0) {
+        container.innerHTML = '<p class="text-zinc-500 text-xs italic">Belum ada kegiatan atau pelatihan yang didata.</p>';
+        return;
+      }
+
+      container.innerHTML = trainings.map(item => {
+        const thumbUrl = resolveTrainingThumbnail(item);
+        const isPdf = isDocumentPdf(item);
+
+        return `
+        <div class="flex items-center justify-between p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/60 text-xs">
+          <div class="flex items-center gap-3">
+            ${thumbUrl ? `
+              <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700 flex-shrink-0">
+                <img src="${thumbUrl}" class="w-full h-full object-cover">
+                ${isPdf ? `<span class="absolute bottom-0 inset-x-0 bg-rose-900 text-white text-[8px] font-black text-center py-0.2">PDF</span>` : ''}
+              </div>
+            ` : `
+              <div class="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 text-xs font-mono flex-shrink-0">
+                ${isPdf ? 'PDF' : 'No Doc'}
+              </div>
+            `}
+            <div class="min-w-0">
+              <p class="font-bold text-white text-sm truncate">${item.title} <span class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono ml-1">${item.type || 'Pelatihan'}</span></p>
+              <p class="text-zinc-400 text-xs truncate">${item.organizer} • <span class="font-mono text-zinc-500">${item.period}</span></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="editTraining('${item.id}')" class="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all">
+              Edit
+            </button>
+            <button onclick="deleteTraining('${item.id}')" class="px-3 py-1.5 rounded-lg border border-rose-900/50 bg-rose-950/30 text-rose-400 hover:bg-rose-900/50 transition-all">
+              Hapus
+            </button>
+          </div>
+        </div>
+        `;
+      }).join('');
+    }
+
+    let selectedTrainingPdfThumbnail = '';
+    let selectedTrainingFileType = 'image';
+
+    // Handler ketika pengguna memilih file sertifikat/dokumen (Foto atau PDF)
+    async function handleTrainingFileSelected(input) {
+      selectedTrainingPdfThumbnail = '';
+      selectedTrainingFileType = 'image';
+
+      const previewBox = document.getElementById('training-file-preview-box');
+      const previewImg = document.getElementById('training-form-preview-img');
+      const fileNameEl = document.getElementById('training-form-file-name');
+      const fileBadgeEl = document.getElementById('training-form-file-badge');
+
+      if (!input.files || !input.files[0]) {
+        if (previewBox) previewBox.classList.add('hidden');
+        return;
+      }
+
+      const file = input.files[0];
+      if (fileNameEl) fileNameEl.textContent = file.name;
+      if (previewBox) previewBox.classList.remove('hidden');
+
+      // Jika file adalah PDF
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        selectedTrainingFileType = 'pdf';
+        if (fileBadgeEl) {
+          fileBadgeEl.textContent = 'DOKUMEN PDF';
+          fileBadgeEl.className = 'inline-block px-1.5 py-0.5 rounded text-[10px] font-mono mt-1 bg-rose-950 text-rose-300 border border-rose-800';
+        }
+
+        // Generate thumbnail halaman 1 PDF menggunakan PDF.js
+        try {
+          const fileReader = new FileReader();
+          fileReader.onload = async function() {
+            try {
+              if (typeof pdfjsLib !== 'undefined') {
+                const typedarray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1.2 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                selectedTrainingPdfThumbnail = thumbDataUrl;
+
+                if (previewImg) {
+                  previewImg.src = thumbDataUrl;
+                  previewImg.classList.remove('hidden');
+                }
+              }
+            } catch (pdfErr) {
+              console.warn('PDF.js renderer note:', pdfErr);
+            }
+          };
+          fileReader.readAsArrayBuffer(file);
+        } catch (err) {
+          console.warn('Gagal membaca PDF untuk thumbnail:', err);
+        }
+      } else {
+        // Jika file adalah gambar biasa
+        selectedTrainingFileType = 'image';
+        if (fileBadgeEl) {
+          fileBadgeEl.textContent = 'FOTO / GAMBAR';
+          fileBadgeEl.className = 'inline-block px-1.5 py-0.5 rounded text-[10px] font-mono mt-1 bg-zinc-800 text-zinc-300';
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          if (previewImg) {
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('hidden');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function openAddTrainingModal() {
+      selectedTrainingPdfThumbnail = '';
+      selectedTrainingFileType = 'image';
+
+      const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      setV('training-form-id', '');
+      setV('training-form-title', '');
+      setV('training-form-organizer', '');
+      setV('training-form-period', '');
+      setV('training-form-type', 'Pelatihan');
+      setV('training-form-desc', '');
+      setV('training-form-doc-url', '');
+      setV('training-form-file', '');
+
+      const pBox = document.getElementById('training-file-preview-box');
+      if (pBox) pBox.classList.add('hidden');
+
+      const title = document.getElementById('training-modal-title');
+      if (title) title.textContent = 'Tambah Kegiatan / Pelatihan Baru';
+
+      const modal = document.getElementById('training-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function editTraining(id) {
+      const item = (portfolioData.trainings || []).find(t => t.id === id);
+      if (!item) return;
+
+      selectedTrainingPdfThumbnail = '';
+      selectedTrainingFileType = item.fileType || (isDocumentPdf(item) ? 'pdf' : 'image');
+
+      const setV = (elemId, v) => { const el = document.getElementById(elemId); if (el) el.value = v; };
+      setV('training-form-id', item.id);
+      setV('training-form-title', item.title);
+      setV('training-form-organizer', item.organizer);
+      setV('training-form-period', item.period);
+      setV('training-form-type', item.type || 'Pelatihan');
+      setV('training-form-desc', item.description);
+      setV('training-form-doc-url', item.docUrl || '');
+      setV('training-form-file', '');
+
+      const pBox = document.getElementById('training-file-preview-box');
+      const pImg = document.getElementById('training-form-preview-img');
+      const pName = document.getElementById('training-form-file-name');
+      const pBadge = document.getElementById('training-form-file-badge');
+
+      const currentThumb = resolveTrainingThumbnail(item);
+      if (currentThumb && pBox && pImg) {
+        pImg.src = currentThumb;
+        pImg.classList.remove('hidden');
+        if (pName) pName.textContent = item.title || 'Dokumen saat ini';
+        if (pBadge) {
+          pBadge.textContent = selectedTrainingFileType === 'pdf' ? 'DOKUMEN PDF' : 'GAMBAR';
+          pBadge.className = selectedTrainingFileType === 'pdf'
+            ? 'inline-block px-1.5 py-0.5 rounded text-[10px] font-mono mt-1 bg-rose-950 text-rose-300 border border-rose-800'
+            : 'inline-block px-1.5 py-0.5 rounded text-[10px] font-mono mt-1 bg-zinc-800 text-zinc-300';
+        }
+        pBox.classList.remove('hidden');
+      } else if (pBox) {
+        pBox.classList.add('hidden');
+      }
+
+      const title = document.getElementById('training-modal-title');
+      if (title) title.textContent = 'Edit Kegiatan / Pelatihan';
+
+      const modal = document.getElementById('training-form-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeTrainingModal() {
+      const modal = document.getElementById('training-form-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function submitTrainingForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-training-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+      }
+
+      let docUrl = document.getElementById('training-form-doc-url') ? document.getElementById('training-form-doc-url').value : '';
+      let thumbnailUrl = '';
+      const fileInput = document.getElementById('training-form-file');
+
+      // Proses unggah file dokumen / foto baru jika ada
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+        if (btn) btn.textContent = isPdf ? 'Mengunggah PDF ke Drive...' : 'Mengunggah foto ke Drive...';
+        try {
+          const upRes = await uploadFileAsync(file);
+          if (upRes && upRes.success) {
+            docUrl = upRes.url;
+            thumbnailUrl = upRes.thumbnailUrl || '';
+
+            // Jika file berupa PDF dan thumbnail halaman 1 berhasil di-render di client, simpan thumbnail tersebut
+            if (isPdf && selectedTrainingPdfThumbnail) {
+              try {
+                if (btn) btn.textContent = 'Menyimpan thumbnail PDF...';
+                const thumbBlobRes = await new Promise((resolve) => {
+                  if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                      .withSuccessHandler(res => resolve(res))
+                      .withFailureHandler(() => resolve(null))
+                      .uploadImageToDrive(adminToken, selectedTrainingPdfThumbnail, 'thumb_' + file.name.replace(/\.[^/.]+$/, "") + '.jpg', 'image/jpeg');
+                  } else {
+                    resolve({ success: true, url: selectedTrainingPdfThumbnail });
+                  }
+                });
+                if (thumbBlobRes && thumbBlobRes.success) {
+                  thumbnailUrl = thumbBlobRes.url;
+                }
+              } catch (thErr) {
+                console.warn('Gagal upload thumbnail kustom PDF:', thErr);
+              }
+            }
+          }
+        } catch (err) {
+          showToast('Gagal upload dokumen: ' + err.toString(), false);
+        }
+      }
+
+      const getV = id => document.getElementById(id) ? document.getElementById(id).value : '';
+      const id = getV('training-form-id');
+      const isPdfFinal = selectedTrainingFileType === 'pdf' || (docUrl.toLowerCase().indexOf('.pdf') > -1);
+
+      const trainingPayload = {
+        id: id,
+        title: getV('training-form-title'),
+        organizer: getV('training-form-organizer'),
+        period: getV('training-form-period'),
+        type: getV('training-form-type'),
+        description: getV('training-form-desc'),
+        docUrl: docUrl,
+        thumbnailUrl: thumbnailUrl,
+        fileType: isPdfFinal ? 'pdf' : 'image'
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Data';
+            }
+            if (res.success) {
+              closeTrainingModal();
+              reloadAllData();
+              showToast('Kegiatan & pelatihan berhasil disimpan!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Simpan Data';
+            }
+            showToast('Gagal: ' + err.toString(), false);
+          })
+          .saveTraining(adminToken, trainingPayload);
+      } else {
+        setTimeout(() => {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Data';
+          }
+          if (!portfolioData.trainings) portfolioData.trainings = [];
+          if (id) {
+            const idx = portfolioData.trainings.findIndex(t => t.id === id);
+            if (idx > -1) portfolioData.trainings[idx] = trainingPayload;
+          } else {
+            trainingPayload.id = 'trn-' + new Date().getTime();
+            portfolioData.trainings.push(trainingPayload);
+          }
+          closeTrainingModal();
+          renderPublicView();
+          renderAdminTrainingsTable();
+          showToast('Data berhasil disimpan (Lokal)');
+        }, 350);
+      }
+    }
+
+    function deleteTraining(id) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              reloadAllData();
+              showToast('Data kegiatan/pelatihan dihapus.');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .deleteTraining(adminToken, id);
+      } else {
+        portfolioData.trainings = (portfolioData.trainings || []).filter(t => t.id !== id);
+        renderPublicView();
+        renderAdminTrainingsTable();
+        showToast('Data dihapus (Lokal)');
+      }
+    }
+
+    function renderAdminSkillsTable() {
+      const container = document.getElementById('admin-skills-wrapper');
+      if (!container) return;
+      container.innerHTML = '';
+      (portfolioData.skills || []).forEach(sk => {
+        addSkillInputRow(sk.category, sk.name, sk.proficiency, sk.id);
+      });
+    }
+
+    function addSkillInputRow(category = 'Frontend', name = '', prof = '90%', id = '') {
+      const container = document.getElementById('admin-skills-wrapper');
+      if (!container) return;
+      const row = document.createElement('div');
+      row.className = 'skill-input-row grid grid-cols-12 gap-2 items-center text-xs';
+      row.dataset.skillId = id || ('sk-' + new Date().getTime());
+      row.innerHTML = `
+        <div class="col-span-3">
+          <input type="text" value="${category}" placeholder="Kategori" class="skill-cat-input w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white">
+        </div>
+        <div class="col-span-5">
+          <input type="text" value="${name}" placeholder="Nama Skill" class="skill-name-input w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white">
+        </div>
+        <div class="col-span-3">
+          <input type="text" value="${prof}" placeholder="Level" class="skill-prof-input w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white font-mono">
+        </div>
+        <div class="col-span-1 text-center">
+          <button type="button" onclick="this.closest('.skill-input-row').remove()" class="text-zinc-500 hover:text-rose-400 text-base font-bold">✕</button>
+        </div>
+      `;
+      container.appendChild(row);
+    }
+
+    function addNewSkillInputRow() {
+      addSkillInputRow('', '', '85%');
+    }
+
+    function saveAllSkills() {
+      const rows = document.querySelectorAll('.skill-input-row');
+      const skillsArray = [];
+      rows.forEach(r => {
+        const cat = r.querySelector('.skill-cat-input') ? r.querySelector('.skill-cat-input').value.trim() : '';
+        const name = r.querySelector('.skill-name-input') ? r.querySelector('.skill-name-input').value.trim() : '';
+        const prof = r.querySelector('.skill-prof-input') ? r.querySelector('.skill-prof-input').value.trim() : '';
+        if (name) {
+          skillsArray.push({
+            id: r.dataset.skillId,
+            category: cat || 'Umum',
+            name: name,
+            proficiency: prof
+          });
+        }
+      });
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              reloadAllData();
+              showToast('Semua skill berhasil disimpan!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .saveSkills(adminToken, skillsArray);
+      } else {
+        portfolioData.skills = skillsArray;
+        renderPublicView();
+        showToast('Skill disimpan (Lokal)');
+      }
+    }
+
+    function handlePasswordChange(e) {
+      e.preventDefault();
+      const p1 = document.getElementById('new-admin-pass') ? document.getElementById('new-admin-pass').value : '';
+      const p2 = document.getElementById('confirm-admin-pass') ? document.getElementById('confirm-admin-pass').value : '';
+
+      if (p1 !== p2) {
+        showToast('Konfirmasi password tidak cocok!', false);
+        return;
+      }
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res.success) {
+              adminToken = p1;
+              if (document.getElementById('new-admin-pass')) document.getElementById('new-admin-pass').value = '';
+              if (document.getElementById('confirm-admin-pass')) document.getElementById('confirm-admin-pass').value = '';
+              showToast('Password admin berhasil diubah!');
+            } else {
+              showToast(res.message, false);
+            }
+          })
+          .changeAdminPassword(adminToken, p1);
+      } else {
+        adminToken = p1;
+        if (document.getElementById('new-admin-pass')) document.getElementById('new-admin-pass').value = '';
+        if (document.getElementById('confirm-admin-pass')) document.getElementById('confirm-admin-pass').value = '';
+        showToast('Password diubah (Lokal)');
+      }
+    }
+
+    function reloadAllData() {
+      loadInitialData();
+    }
+
+    function loadInitialData() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.success && res.data) {
+              portfolioData = res.data;
+              renderPublicView();
+              if (adminToken) {
+                populateAdminFields();
+              }
+            } else {
+              console.error('Pemberitahuan Apps Script:', res);
+              renderPublicView();
+              showToast('Gagal memuat: ' + (res ? res.message : 'Respon kosong'), false);
+            }
+          })
+          .withFailureHandler((err) => {
+            console.error('Error Apps Script:', err);
+            renderPublicView();
+            showToast('Koneksi Apps Script terputus: ' + err.toString(), false);
+          })
+          .getPublicPortfolioData();
+      } else {
+        portfolioData = {
+          settings: {
+            name: '',
+            title: '',
+            tagline: 'Silakan isi data diri Anda melalui Panel Admin.',
+            bio: '',
+            profile_image: '',
+            cover_image: '',
+            email: '',
+            jobstreet: '',
+            linkedin: '',
+            location: 'Indonesia'
+          },
+          projects: [],
+          experiences: [],
+          skills: [],
+          trainings: [],
+          education: []
+        };
+        renderPublicView();
+      }
+    }
+  </script>
+</body>
+</html>
